@@ -1,13 +1,20 @@
 import pygame
 import numpy as np
-
+pygame.init()
+font = pygame.font.SysFont("bahnschrift", 25)
 class Tile:
   def __init__(self, is_mine=False):
     self.is_mine = is_mine
     self.is_flagged = False
+    self.is_revealed = False
     self.adjacent_mines = 0
   def __str__(self):
      return f"{self.is_mine} {self.adjacent_mines}"
+  
+  def reveal(self):
+    self.is_revealed = True
+    print(self.adjacent_mines)
+  
   
 
 class Grid:
@@ -33,21 +40,21 @@ class Grid:
     for i in grid:
       for j in i:
         if j.is_mine:
-          print("1", end="")
+          print("M", end="  ")
         else:
-          print("0",end="")
+          print(j.adjacent_mines,end="  ")
       print("")
     return grid
   
 
   def get_adjacent_mines(self, grid, x, y):
      adjacent_mines = 0
-     if grid[x-1,y-1].is_mine:
+     if grid[x,y].is_mine:
         return -1
      else:
-        for x in range(max(0, x - 1), min(8, x + 2)):
-          for y in range(max(0, y - 1), min(12, y + 2)):
-            if grid[x-4, y-4].is_mine:
+        for i in range(max(0, x - 1), min(8, x + 2)):
+          for j in range(max(0, y - 1), min(12, y + 2)):
+            if grid[i, j].is_mine:
               adjacent_mines += 1
         return adjacent_mines
 
@@ -56,6 +63,7 @@ class Grid:
     for x in range(0,600,self.tileSize):
       for y in range(0,400,self.tileSize):
         rect = pygame.Rect(x, y, self.tileSize,self.tileSize)
+
         if x%(self.tileSize*2)==0 and y%(self.tileSize*2)==0 or x%(self.tileSize*2)!=0 and y%(self.tileSize*2)!=0:
           pygame.draw.rect(self.display,(64,64,64), rect)
         else:
@@ -67,17 +75,25 @@ class Game:
     self.display = pygame.display.set_mode((600,400))
     self.grid = Grid(self.display)
 
-  def handle_click():
-    pass
+  def handle_click(self, x, y):
+    gridX = x//50
+    gridY = y//50
+    print(gridX,gridY)
+    self.grid.grid[gridY][gridX].reveal()
 
   def run_game(self):
     while self.gameLoop:
       for event in pygame.event.get():
         if event.type == pygame.QUIT:
           self.gameLoop = False
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+          x, y = event.pos 
+          self.handle_click(x,y)
+
       self.grid.draw_grid()
       pygame.display.update()
-
+    print(self.grid.get_adjacent_mines(self.grid.grid, 2, 2))
 if __name__ == "__main__":
   game = Game()
   game.run_game()
