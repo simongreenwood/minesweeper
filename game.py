@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import time
 
 pygame.init()
 font = pygame.font.SysFont("bahnschrift", 25)
@@ -22,14 +23,35 @@ class Tile:
 
 class Grid:
   def __init__(self, display):
-    self.rows = 30
-    self.cols = 40
-    self.tileSize = 20
-    self.grid = np.array([[Tile() for _ in range(self.cols)] for _ in range(self.rows)])
+    
     self.display = display
-    self.mineCount = 10
+    self.tileSize = 3
+    self.rows = self.display.get_height() // self.tileSize
+    self.cols = self.display.get_width() // self.tileSize
+    self.grid = np.array([[Tile() for _ in range(self.cols)] for _ in range(self.rows)])
+    self.mineCount = (self.rows * self.cols) // 6
     self.placed = False
     self.width,self.height = self.display.get_size()
+    self.tileColours = {
+      1: (25, 118, 210),
+      2: (56, 142, 60),
+      3: (211, 47, 47),
+      4: (123, 31, 162),
+      5: (255, 143, 0),
+      6: (0, 151, 167),
+      7: (66, 66, 66),
+      8: (158, 158, 158)
+    }
+    self.backgroundColours = {
+      "lightUnrevealed": (166,217,73),
+      "darkUnrevealed": (142,204,57),
+      "lightRevealed": (229,195,158),
+      "darkRevealed": (205,175,142)
+    }
+    self.flag = pygame.image.load("flag_icon.png")
+    
+    self.fontSize = int(self.tileSize)
+    self.font = pygame.font.SysFont("bahnschrift",self.fontSize)
 
   def initialize_grid(self,startingX, startingY):
     while True:
@@ -80,36 +102,39 @@ class Grid:
         if not self.grid[i][j].is_revealed and not self.grid[i][j].is_mine:
           return False
     return True
-  def draw_grid(self):
-    won = True
+  def draw_grid(self,gameOver):
     for x in range(0, self.width, self.tileSize):
       for y in range(0, self.height, self.tileSize):
         rect = pygame.Rect(x, y, self.tileSize, self.tileSize)
         tileX = x // self.tileSize
         tileY = y // self.tileSize
-        if self.grid[tileY][tileX].is_mine and not self.grid[tileY][tileX].is_flagged:
-          won = False
+        
+        if gameOver and self.grid[tileY][tileX].is_mine and not self.grid[tileY][tileX].is_flagged:
+          self.grid[tileY][tileX].reveal()
           
         if self.grid[tileY][tileX].is_revealed:
           if (x // self.tileSize + y // self.tileSize) % 2 == 0:
-            pygame.draw.rect(self.display, (120, 120, 120), rect)
+            pygame.draw.rect(self.display, self.backgroundColours["lightRevealed"], rect)
           else:
-            pygame.draw.rect(self.display, (150, 150, 150), rect)
+            pygame.draw.rect(self.display, self.backgroundColours["darkRevealed"], rect)
 
           if self.grid[tileY][tileX].is_mine:
-            #text = font.render("M", True, (255, 0, 0))
-            #self.display.blit(text, (x + 17, y + 17))
             pygame.draw.rect(self.display, (255,0,0), rect)
           else:
-            text = font.render(str(self.grid[tileY][tileX].adjacent_mines), True, (255, 255, 255))
-            self.display.blit(text, (x + 20, y + 20))
+            adj = self.grid[tileY][tileX].adjacent_mines
+            if adj > 0:
+              text = self.font.render(str(adj), True, self.tileColours[adj])
+              text_rect = text.get_rect(center=rect.center) 
+              self.display.blit(text, text_rect)
         elif self.grid[tileY][tileX].is_flagged:
-          pygame.draw.rect(self.display, (0, 0, 255), rect)
+          flag = pygame.transform.scale(self.flag, (self.tileSize, self.tileSize))
+          self.display.blit(flag, (x, y))
         else:
           if (x // self.tileSize + y // self.tileSize) % 2 == 0:
-            pygame.draw.rect(self.display, (64, 64, 64), rect)
+            pygame.draw.rect(self.display, self.backgroundColours["lightUnrevealed"], rect)
           else:
-            pygame.draw.rect(self.display, (32, 32, 32), rect)
+            pygame.draw.rect(self.display, self.backgroundColours["darkUnrevealed"], rect)
+                
   def reveal_adjacent(self, x, y):
     for i in range(max(0, x - 1), min(self.cols, x + 2)):
       for j in range(max(0, y - 1), min(self.rows, y + 2)):
@@ -124,14 +149,14 @@ class Game:
     self.gameLoop = True
     self.gameOver  = False
     self.gameWon = False
-    self.width = 800
-    self.height = 600
+    self.width = 1200
+    self.height = 900
     self.display = pygame.display.set_mode((self.width, self.height))
     self.grid = Grid(self.display)
 
   def handle_click(self, button, x, y):
-    gridX = (x // 50)
-    gridY = (y // 50)
+    gridX = (x // self.grid.tileSize)
+    gridY = (y // self.grid.tileSize)
     
     if button == 1:
       
@@ -160,24 +185,26 @@ class Game:
           if event.type == pygame.MOUSEBUTTONDOWN:
             x, y = event.pos
             self.handle_click(event.button, x, y)
-        self.grid.draw_grid()
-      elif self.gameWon:
-        self.display.fill((0, 0, 0))
+        self.grid.draw_grid(self.gameWon)
+        
+        
+      elif self.gameWon:         
+        self.grid.draw_grid(self.gameOver)
+        pygame.display.update()
         text = font.render("You Win!", True, (0, 255, 0))
-        self.display.blit(text, (250, 150))
+        self.display.blit(text, (self.width//2, self.height//2))
         for event in pygame.event.get():
           if event.type == pygame.QUIT:
             self.gameLoop = False
       else:
-        self.display.fill((0, 0, 0))
-        text = font.render("Game Over", True, (255, 255, 255))
-        self.display.blit(text, (250, 150))
+        self.grid.draw_grid(self.gameOver)
+        text = font.render("Game Over!", True, (255, 0, 0))
+        self.display.blit(text, (self.width//2, self.height//2))
         for event in pygame.event.get():
           if event.type == pygame.QUIT:
             self.gameLoop = False
+
       pygame.display.update()
-
-
 if __name__ == "__main__":
   game = Game()
   game.run_game()
