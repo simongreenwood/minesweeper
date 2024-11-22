@@ -113,19 +113,21 @@ class Grid:
     
   def draw_grid(self,gameOver,timer):
     self.display.fill((0,0,0))
-    for x in range(0, self.width, self.tileSize):
-      for y in range(self.topBarHeight, self.height, self.tileSize):
-        rect = pygame.Rect(x, y, self.tileSize, self.tileSize)
-        tileX = x // self.tileSize
-        tileY = (y-self.topBarHeight) // self.tileSize
+    for y in range(self.rows):
+      for x in range(self.cols):
+        rect = pygame.Rect(x * self.tileSize, y * self.tileSize + self.topBarHeight, self.tileSize, self.tileSize)
+        tileX = x 
+        tileY = y
         self.draw_top_bar(timer)
         if gameOver and self.grid[tileY][tileX].is_mine and not self.grid[tileY][tileX].is_flagged:
           self.grid[tileY][tileX].reveal()
         if self.grid[tileY][tileX].is_revealed:
-          if (x // self.tileSize + y // self.tileSize) % 2 == 0:
-            pygame.draw.rect(self.display, self.backgroundColours["lightRevealed"], rect)
+          if (x + y) % 2 == 0:  # Simplified check for alternating colors
+              print("drawing light at",x,y)
+              pygame.draw.rect(self.display, self.backgroundColours["lightRevealed"], rect)
           else:
-            pygame.draw.rect(self.display, self.backgroundColours["darkRevealed"], rect)
+              print("drawing dark at",x,y)
+              pygame.draw.rect(self.display, self.backgroundColours["darkRevealed"], rect)
 
           if self.grid[tileY][tileX].is_mine:
             pygame.draw.rect(self.display, (255,0,0), rect)
@@ -137,12 +139,14 @@ class Grid:
               self.display.blit(text, text_rect)
         elif self.grid[tileY][tileX].is_flagged:
           flag = pygame.transform.scale(self.flag, (self.tileSize, self.tileSize))
-          self.display.blit(flag, (x, y+self.topBarHeight))
+          self.display.blit(flag, rect)
         else:
-          if (x // self.tileSize + y // self.tileSize) % 2 == 0:
-            pygame.draw.rect(self.display, self.backgroundColours["lightUnrevealed"], rect)
+          if (x + y) % 2 == 0:
+              print("drawing light at",x,y)
+              pygame.draw.rect(self.display, self.backgroundColours["lightUnrevealed"], rect)
           else:
-            pygame.draw.rect(self.display, self.backgroundColours["darkUnrevealed"], rect)
+              print("drawing dark at",x,y)
+              pygame.draw.rect(self.display, self.backgroundColours["darkUnrevealed"], rect)
                 
   def reveal_adjacent(self, x, y):
     for i in range(max(0, x - 1), min(self.cols, x + 2)):
@@ -157,7 +161,7 @@ class Game:
     self.gameLoop = True
     self.gameOver  = False
     self.gameWon = False
-    self.topBarHeight = 50
+    self.topBarHeight = 2
     self.width = 1250
     self.height = 750 
     self.timer = 0
